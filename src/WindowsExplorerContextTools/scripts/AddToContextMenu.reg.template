@@ -1,0 +1,33 @@
+Windows Registry Editor Version 5.00
+
+; Context menu for local folders
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\MyContextTools]
+@="MyContextTools"
+"Icon"="\"%EXE_PATH%\",0"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\MyContextTools\command]
+@="\"%EXE_PATH%\" \"%1\""
+
+; Context menu for all folders including network shares and UNC paths
+[HKEY_CURRENT_USER\Software\Classes\Folder\shell\MyContextTools]
+@="MyContextTools"
+"Icon"="\"%EXE_PATH%\",0"
+
+[HKEY_CURRENT_USER\Software\Classes\Folder\shell\MyContextTools\command]
+@="\"%EXE_PATH%\" \"%1\""
+
+; Context menu for folder background (right-click inside a folder)
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\MyContextTools]
+@="MyContextTools"
+"Icon"="\"%EXE_PATH%\",0"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\MyContextTools\command]
+@="\"%EXE_PATH%\" \"%V\""
+
+; Context menu for files
+[HKEY_CURRENT_USER\Software\Classes\*\shell\MyContextTools]
+@="MyContextTools"
+"Icon"="\"%EXE_PATH%\",0"
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\MyContextTools\command]
+@="\"%EXE_PATH%\" \"%1\""

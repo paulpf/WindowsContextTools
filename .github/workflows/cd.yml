@@ -1,0 +1,46 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore src/WindowsExplorerContextTools.sln
+
+      - name: Publish
+        run: dotnet publish src/WindowsExplorerContextTools/WindowsExplorerContextTools.csproj --configuration Release --runtime win-x64 --self-contained false --output ./publish
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WindowsExplorerContextTools-win-x64
+          path: ./publish
+
+      - name: Package release asset
+        shell: pwsh
+        run: Compress-Archive -Path ./publish/* -DestinationPath ./WindowsExplorerContextTools-win-x64.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./WindowsExplorerContextTools-win-x64.zip
+          generate_release_notes: true

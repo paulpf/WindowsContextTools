@@ -1,0 +1,19 @@
+﻿<Window x:Class="WindowsExplorerContextTools.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WindowsExplorerContextTools"
+        mc:Ignorable="d"
+        Title="Context menu tool"
+        Height="240"  Width="420"
+        ResizeMode="NoResize"
+        Closing="Window_Closing">
+    <StackPanel Margin="10,10,10,10">
+        <ComboBox x:Name="comboBoxCommands" Height="20" Margin="0,0,0,10"/>
+        <TextBox x:Name="textBoxCommandInput" Height="20" Margin="0,0,0,10" IsReadOnly="False"/>
+        <Button Name="btnAction" Content="Run" Click="ButtonAction_Click" Height="20" Margin="0,0,0,10"/>
+        <ProgressBar x:Name="progressBar" Height="20" Margin="0,0,0,5"/>
+        <TextBlock x:Name="txtProgress" Height="20" Text="" Foreground="Gray"/>
+    </StackPanel>
+</Window>
