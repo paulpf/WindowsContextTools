@@ -8,37 +8,45 @@ public class ListFilesCommand(IFileSystemService fileSystemService, IResultOutpu
 {
 	public string Name => "Create a list of all files";
 
-    public async Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
-    {
-        var selectedPath = context.SelectedPaths.FirstOrDefault();
+	public async Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
+	{
+		var selectedPath = context.SelectedPaths.FirstOrDefault();
 
-        if (string.IsNullOrEmpty(selectedPath) || !fileSystemService.DirectoryExists(selectedPath))
-        {
-            return CommandResult.StayOpen("The selected path is not a folder.");
-        }
+		if (string.IsNullOrEmpty(selectedPath) || !fileSystemService.DirectoryExists(selectedPath))
+		{
+			return CommandResult.StayOpen("The selected path is not a folder.");
+		}
 
-        var files = new List<string>();
+		var files = new List<string>();
+		await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
 
-        try
-        {
-            await Task.Run(() =>
-            {
-                foreach (var file in fileSystemService.GetFiles(selectedPath, "*.*", SearchOption.AllDirectories, cancellationToken))
-                {
-                    context.PauseToken.WaitIfPaused(cancellationToken);
-                    files.Add(file);
-                    context.CollectedResults.Add(file);
-                    context.Progress?.Report(new ProgressInfo(files.Count));
-                }
-            }, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            return CommandResult.Canceled(files);
-        }
+		try
+		{
+			await Task.Run(() =>
+			{
+				foreach (var file in fileSystemService.GetFiles(selectedPath, "*.*", SearchOption.AllDirectories, cancellationToken))
+				{
+					context.PauseToken.WaitIfPaused(cancellationToken);
+					files.Add(file);
+					context.CollectedResults.Add(file);
+					context.Progress?.Report(new ProgressInfo(files.Count, OutputFilePath: writer.FilePath));
 
-        await resultOutputService.ShowInEditorAsync(files, cancellationToken);
+					// Schreibe sofort zur Datei
+					writer.WriteLineAsync(file).GetAwaiter().GetResult();
+				}
+			}, cancellationToken);
 
-        return CommandResult.Success();
-    }
+			await writer.FlushAsync();
+		}
+		catch (OperationCanceledException)
+		{
+			return CommandResult.Canceled(files);
+		}
+
+		// Datei im Explorer zeigen
+		resultOutputService.ShowFileInExplorer(writer.FilePath);
+
+		return CommandResult.Success();
+	}
 }
+

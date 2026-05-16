@@ -35,12 +35,25 @@ namespace WindowsExplorerContextTools
 		}
 
 		private void InitializeCommandList()
-		{
-			foreach (var command in m_Commands)
 			{
-				comboBoxCommands.Items.Add(command.Name);
+				foreach (var command in m_Commands)
+				{
+					comboBoxCommands.Items.Add(command.Name);
+				}
+
+				// Click-Handler für Output-Datei-Link
+				txtOutputFile.MouseDown += (s, e) =>
+				{
+					if (!string.IsNullOrEmpty(txtOutputFile.Text) && txtOutputFile.Text.Contains(":"))
+					{
+						var filePath = txtOutputFile.Text.Replace("📄 Live results: ", "").Trim();
+						if (System.IO.File.Exists(filePath))
+						{
+							m_ResultOutputService.ShowFileInExplorer(filePath);
+						}
+					}
+				};
 			}
-		}
 
 		private async void ButtonAction_Click(object sender, RoutedEventArgs e)
 		{
@@ -159,20 +172,28 @@ namespace WindowsExplorerContextTools
 		}
 
 		private CommandContext CreateCommandContext()
-		{
-			var progress = new Progress<Commands.ProgressInfo>(info =>
 			{
-				txtProgress.Text = info.TotalCount.HasValue
-					? $"{info.ProcessedCount} / {info.TotalCount}"
-					: $"{info.ProcessedCount} processed";
-			});
+				var progress = new Progress<Commands.ProgressInfo>(info =>
+				{
+					txtProgress.Text = info.TotalCount.HasValue
+						? $"{info.ProcessedCount} / {info.TotalCount}"
+						: $"{info.ProcessedCount} processed";
 
-			return new CommandContext
-			{
-				SelectedPaths = m_SelectedPaths,
-				CurrentPath = m_CurrentPath,
-				InputText = textBoxCommandInput.Text,
-				Progress = progress,
+					// Zeige Output-Datei-Link wenn vorhanden
+					if (!string.IsNullOrEmpty(info.OutputFilePath))
+					{
+						txtOutputFile.Text = $"📄 Live results: {info.OutputFilePath}";
+						txtOutputFile.TextDecorations = System.Windows.TextDecorations.Underline;
+						txtOutputFile.Cursor = System.Windows.Input.Cursors.Hand;
+					}
+				});
+
+				return new CommandContext
+				{
+					SelectedPaths = m_SelectedPaths,
+					CurrentPath = m_CurrentPath,
+					InputText = textBoxCommandInput.Text,
+					Progress = progress,
 				PauseToken = m_PauseTokenSource.Token
 			};
 		}
@@ -202,12 +223,14 @@ namespace WindowsExplorerContextTools
 					progressBar.Visibility = Visibility.Collapsed;
 					txtProgress.Text = string.Empty;
 					txtProgress.Foreground = System.Windows.Media.Brushes.Gray;
+					txtOutputFile.Text = string.Empty;
 					break;
 				case ActionState.Running:
 					btnAction.Content = "Cancel";
 					progressBar.IsIndeterminate = true;
 					progressBar.Visibility = Visibility.Visible;
 					txtProgress.Foreground = System.Windows.Media.Brushes.Gray;
+					txtOutputFile.Text = string.Empty;
 					break;
 				case ActionState.Paused:
 					btnAction.Content = "Resume";

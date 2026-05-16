@@ -26,6 +26,11 @@ public class ResultOutputService : IResultOutputService
         Process.Start("explorer.exe", $"/select,\"{filePath}\"");
     }
 
+    public IStreamingResultWriter CreateStreamingWriter(CancellationToken cancellationToken)
+    {
+        return new StreamingResultWriter(cancellationToken);
+    }
+
     private static void OpenInTextEditor(string filePath)
     {
         if (File.Exists(NotepadPlusPlusPath))
@@ -36,5 +41,53 @@ public class ResultOutputService : IResultOutputService
         {
             Process.Start("notepad.exe", filePath);
         }
+    }
+}
+
+public class StreamingResultWriter : IStreamingResultWriter
+{
+    private readonly StreamWriter _writer;
+    private readonly CancellationToken _cancellationToken;
+    private int _lineCount;
+    private const int BufferFlushInterval = 100;
+
+    public string FilePath { get; }
+
+    public StreamingResultWriter(CancellationToken cancellationToken)
+    {
+        _cancellationToken = cancellationToken;
+        FilePath = Path.GetTempFileName();
+
+        _writer = new StreamWriter(FilePath, false, System.Text.Encoding.UTF8, bufferSize: 65536)
+        {
+            AutoFlush = false
+        };
+
+        _lineCount = 0;
+    }
+
+    public async Task WriteLineAsync(string line)
+    {
+        _cancellationToken.ThrowIfCancellationRequested();
+
+        await _writer.WriteLineAsync(line);
+        _lineCount++;
+
+        // Flush nach jedem BufferFlushInterval oder bei Cancellation
+        if (_lineCount % BufferFlushInterval == 0)
+        {
+            await _writer.FlushAsync();
+        }
+    }
+
+    public async Task FlushAsync()
+    {
+        await _writer.FlushAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _writer.FlushAsync();
+        _writer.Dispose();
     }
 }

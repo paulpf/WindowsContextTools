@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:WindowsExplorerContextTools"
         mc:Ignorable="d"
         Title="Context menu tool"
-        Height="240"  Width="420"
+        Height="280"  Width="420"
         ResizeMode="NoResize"
         Closing="Window_Closing">
     <StackPanel Margin="10,10,10,10">
@@ -15,5 +15,6 @@
         <Button Name="btnAction" Content="Run" Click="ButtonAction_Click" Height="20" Margin="0,0,0,10"/>
         <ProgressBar x:Name="progressBar" Height="20" Margin="0,0,0,5"/>
         <TextBlock x:Name="txtProgress" Height="20" Text="" Foreground="Gray"/>
+        <TextBlock x:Name="txtOutputFile" Height="40" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="Blue"/>
     </StackPanel>
 </Window>
