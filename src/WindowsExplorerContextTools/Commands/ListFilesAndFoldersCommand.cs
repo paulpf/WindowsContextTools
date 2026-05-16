@@ -20,6 +20,10 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 		var folders = new List<string>();
 		int processedCount = 0;
 
+		// Erstelle StreamingWriter sofort und zeige Link
+		await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
+		context.Progress?.Report(new ProgressInfo(0, OutputFilePath: writer.FilePath));
+
 		try
 		{
 			if (fileSystemService.IsSolidStateDrive(selectedPath))
@@ -31,7 +35,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						files.Add(file);
 						context.CollectedResults.Add(file);
-						context.Progress?.Report(new ProgressInfo(Interlocked.Increment(ref processedCount)));
+						context.Progress?.Report(new ProgressInfo(Interlocked.Increment(ref processedCount), OutputFilePath: writer.FilePath));
 					}
 				}, cancellationToken);
 
@@ -42,7 +46,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						folders.Add(folder);
 						context.CollectedResults.Add(folder);
-						context.Progress?.Report(new ProgressInfo(Interlocked.Increment(ref processedCount)));
+						context.Progress?.Report(new ProgressInfo(Interlocked.Increment(ref processedCount), OutputFilePath: writer.FilePath));
 					}
 				}, cancellationToken);
 
@@ -58,7 +62,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						files.Add(file);
 						context.CollectedResults.Add(file);
-						context.Progress?.Report(new ProgressInfo(++processedCount));
+						context.Progress?.Report(new ProgressInfo(++processedCount, OutputFilePath: writer.FilePath));
 					}
 
 					foreach (var folder in fileSystemService.GetDirectories(selectedPath, "*", SearchOption.AllDirectories, cancellationToken))
@@ -66,7 +70,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						folders.Add(folder);
 						context.CollectedResults.Add(folder);
-						context.Progress?.Report(new ProgressInfo(++processedCount));
+						context.Progress?.Report(new ProgressInfo(++processedCount, OutputFilePath: writer.FilePath));
 					}
 				}, cancellationToken);
 			}
@@ -87,7 +91,6 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 		combinedList.Sort();
 
 		// Schreibe sortierte Liste zur Datei mit Streaming
-		await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
 		foreach (var item in combinedList)
 		{
 			await writer.WriteLineAsync(item);

@@ -20,6 +20,9 @@ public class ListFilesCommand(IFileSystemService fileSystemService, IResultOutpu
 		var files = new List<string>();
 		await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
 
+		// Zeige Output-Link sofort an
+		context.Progress?.Report(new ProgressInfo(0, OutputFilePath: writer.FilePath));
+
 		try
 		{
 			await Task.Run(() =>

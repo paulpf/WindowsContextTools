@@ -21,6 +21,10 @@ public class FindDuplicateFilesCommand(
             return CommandResult.StayOpen("Select at least one folder or drive.");
         }
 
+        // Erstelle StreamingWriter sofort und zeige Link in UI
+        await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
+        context.Progress?.Report(new ProgressInfo(0, OutputFilePath: writer.FilePath));
+
         DuplicateScanResult duplicateScanResult;
         try
         {
@@ -35,7 +39,6 @@ public class FindDuplicateFilesCommand(
             return CommandResult.Canceled(context.CollectedResults.ToList());
         }
 
-        await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
         var report = CreateReport(selectedDirectories, duplicateScanResult);
 
         foreach (var line in report)

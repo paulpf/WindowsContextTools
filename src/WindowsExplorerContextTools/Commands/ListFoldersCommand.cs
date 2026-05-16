@@ -26,6 +26,9 @@ public class ListFoldersCommand(
 		var folders = new List<string>();
 		await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
 
+		// Zeige Output-Link sofort an
+		context.Progress?.Report(new ProgressInfo(0, OutputFilePath: writer.FilePath));
+
 		try
 		{
 			await Task.Run(() =>
