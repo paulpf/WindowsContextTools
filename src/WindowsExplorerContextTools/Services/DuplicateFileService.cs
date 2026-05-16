@@ -15,6 +15,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
         return await Task.Run(() =>
         {
             var processedCount = 0;
+            var duplicateCount = 0;
             var fileEntries = new List<FileEntry>();
             var filesBySize = new Dictionary<long, List<string>>();
             var validRootPaths = rootPaths
@@ -41,7 +42,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
 
                     files.Add(file);
                     fileEntries.Add(new FileEntry(file, fileSize));
-                    progress?.Report(new ProgressInfo(++processedCount));
+                    progress?.Report(new ProgressInfo(++processedCount, DuplicateCount: duplicateCount));
                 }
             }
 
@@ -67,9 +68,14 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
                     files = [];
                     filesByHash[key] = files;
                 }
+                else if (files.Count >= 1)
+                {
+                    // Die neue Datei ist ein Duplikat (mindestens eine andere Datei mit gleichem Hash existiert)
+                    duplicateCount++;
+                }
 
                 files.Add(candidate.File);
-                progress?.Report(new ProgressInfo(++processedCount));
+                progress?.Report(new ProgressInfo(++processedCount, DuplicateCount: duplicateCount));
             }
 
             var groupId = 1;
@@ -84,7 +90,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
                     group.Value.Order(StringComparer.OrdinalIgnoreCase).ToList()))
                 .ToList();
 
-            var duplicateFolderGroups = FindDuplicateFolders(validRootPaths, fileEntries, progress, pauseToken, ref processedCount, cancellationToken);
+            var duplicateFolderGroups = FindDuplicateFolders(validRootPaths, fileEntries, progress, pauseToken, ref processedCount, ref duplicateCount, cancellationToken);
 
             return new DuplicateScanResult(duplicateFileGroups, duplicateFolderGroups);
         }, cancellationToken);
@@ -96,6 +102,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
         IProgress<ProgressInfo>? progress,
         PauseToken pauseToken,
         ref int processedCount,
+        ref int duplicateCount,
         CancellationToken cancellationToken)
     {
         var foldersByManifest = new Dictionary<string, List<FolderCandidate>>();
@@ -116,7 +123,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
             }
 
             candidates.Add(candidate);
-            progress?.Report(new ProgressInfo(++processedCount));
+            progress?.Report(new ProgressInfo(++processedCount, DuplicateCount: duplicateCount));
         }
 
         var foldersByHash = new Dictionary<(long TotalSize, string Hash), List<string>>();
@@ -139,9 +146,14 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
                 duplicateFolders = [];
                 foldersByHash[key] = duplicateFolders;
             }
+            else if (duplicateFolders.Count >= 1)
+            {
+                // Diese Folder ist ein Duplikat
+                duplicateCount++;
+            }
 
             duplicateFolders.Add(candidate.FolderPath);
-            progress?.Report(new ProgressInfo(++processedCount));
+            progress?.Report(new ProgressInfo(++processedCount, DuplicateCount: duplicateCount));
         }
 
         var groupId = 1;

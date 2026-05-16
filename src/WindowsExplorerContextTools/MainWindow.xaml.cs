@@ -175,9 +175,19 @@ namespace WindowsExplorerContextTools
 			{
 				var progress = new Progress<Commands.ProgressInfo>(info =>
 				{
-					txtProgress.Text = info.TotalCount.HasValue
-						? $"{info.ProcessedCount} / {info.TotalCount}"
-						: $"{info.ProcessedCount} processed";
+					// Zeige Duplikate wenn vorhanden, sonst normale Verarbeitung
+					if (info.DuplicateCount.HasValue)
+					{
+						txtProgress.Text = info.DuplicateCount == 0
+							? "0 duplicates found"
+							: $"{info.DuplicateCount} duplicate{(info.DuplicateCount == 1 ? "" : "s")} found";
+					}
+					else
+					{
+						txtProgress.Text = info.TotalCount.HasValue
+							? $"{info.ProcessedCount} / {info.TotalCount}"
+							: $"{info.ProcessedCount} processed";
+					}
 
 					// Zeige Output-Datei-Link wenn vorhanden
 					if (!string.IsNullOrEmpty(info.OutputFilePath))
