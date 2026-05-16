@@ -10,12 +10,14 @@ public class CommandsTests
     {
         var fs = new FileSystemService();
         var rs = new ResultOutputService();
+        var duplicateFileService = new DuplicateFileService(fs);
         return
         [
             new ListFilesAndFoldersCommand(fs, rs),
             new ListFilesCommand(fs, rs),
             new ListFoldersCommand(fs, rs),
             new ListFoldersCommand(fs, rs, includeSubfolders: true),
+            new FindDuplicateFilesCommand(fs, duplicateFileService, rs),
             new FindSmallestSolutionCommand(fs, rs)
         ];
     }
@@ -33,7 +35,7 @@ public class CommandsTests
     public void AllCommands_ReturnsCorrectCount()
     {
         var commands = CreateAllCommands();
-        Assert.Equal(5, commands.Count);
+        Assert.Equal(6, commands.Count);
     }
 
     [Fact]
@@ -46,6 +48,7 @@ public class CommandsTests
         Assert.Contains("Create a list of all files", names);
         Assert.Contains("Create a list of all folders", names);
         Assert.Contains("Create a list of all folders and subfolders", names);
+        Assert.Contains("Find duplicate files", names);
         Assert.Contains("Find the smallest solution for the project", names);
     }
 }

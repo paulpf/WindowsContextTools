@@ -1,4 +1,5 @@
 using WindowsExplorerContextTools.Commands;
+using WindowsExplorerContextTools.Services;
 using Xunit;
 
 namespace WindowsExplorerContextTools.Tests;
@@ -103,6 +104,49 @@ public class CommandExecutionTests
         var result = await command.ExecuteAsync(CreateContext(), cts.Token);
 
         Assert.True(result.WasCanceled);
+        Assert.Equal(0, rs.ShowInEditorCallCount);
+    }
+
+    [Fact]
+    public async Task FindDuplicateFilesCommand_ShowsStructuredReportInEditor()
+    {
+        var duplicateA = @"C:\TestDir\a.txt";
+        var duplicateB = @"C:\TestDir\b.txt";
+        var fs = new FakeFileSystemService(
+            files: [duplicateA, duplicateB, @"C:\TestDir\unique.txt"],
+            fileBytes: new Dictionary<string, byte[]>
+            {
+                [duplicateA] = [1, 2, 3],
+                [duplicateB] = [1, 2, 3],
+                [@"C:\TestDir\unique.txt"] = [4]
+            });
+        var rs = new FakeResultOutputService();
+        var command = new FindDuplicateFilesCommand(fs, new DuplicateFileService(fs), rs);
+
+        var result = await command.ExecuteAsync(CreateContext(), CancellationToken.None);
+
+        Assert.True(result.ShouldClose);
+        Assert.Equal(1, rs.ShowInEditorCallCount);
+        Assert.Contains("Duplicate file report", rs.LastOutput);
+        Assert.Contains("Group id: 1", rs.LastOutput);
+        Assert.Contains("File size: 3 bytes", rs.LastOutput);
+        Assert.Contains("Duplicate count: 2", rs.LastOutput);
+        Assert.Contains("Potential reclaimable size: 3 bytes", rs.LastOutput);
+        Assert.Contains($"  {duplicateA}", rs.LastOutput);
+        Assert.Contains($"  {duplicateB}", rs.LastOutput);
+    }
+
+    [Fact]
+    public async Task FindDuplicateFilesCommand_WithInvalidPath_ReturnsError()
+    {
+        var fs = new FakeFileSystemService();
+        var rs = new FakeResultOutputService();
+        var command = new FindDuplicateFilesCommand(fs, new DuplicateFileService(fs), rs);
+
+        var result = await command.ExecuteAsync(CreateContext([""]), CancellationToken.None);
+
+        Assert.False(result.ShouldClose);
+        Assert.Equal("Select at least one folder or drive.", result.ErrorMessage);
         Assert.Equal(0, rs.ShowInEditorCallCount);
     }
 

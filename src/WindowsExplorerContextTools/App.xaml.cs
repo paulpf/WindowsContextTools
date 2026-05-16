@@ -58,6 +58,7 @@ namespace WindowsExplorerContextTools
         private static List<IToolCommand> CreateCommands(IResultOutputService resultOutputService)
         {
             var fileSystemService = new FileSystemService();
+            var duplicateFileService = new DuplicateFileService(fileSystemService);
 
             return
             [
@@ -65,6 +66,7 @@ namespace WindowsExplorerContextTools
                 new ListFilesCommand(fileSystemService, resultOutputService),
                 new ListFoldersCommand(fileSystemService, resultOutputService),
                 new ListFoldersCommand(fileSystemService, resultOutputService, includeSubfolders: true),
+                new FindDuplicateFilesCommand(fileSystemService, duplicateFileService, resultOutputService),
                 new FindSmallestSolutionCommand(fileSystemService, resultOutputService)
             ];
         }
