@@ -26,6 +26,11 @@ public class ResultOutputService : IResultOutputService
         Process.Start("explorer.exe", $"/select,\"{filePath}\"");
     }
 
+    public void OpenFileInEditor(string filePath)
+    {
+        OpenInTextEditor(filePath);
+    }
+
     public IStreamingResultWriter CreateStreamingWriter(CancellationToken cancellationToken)
     {
         return new StreamingResultWriter(cancellationToken);

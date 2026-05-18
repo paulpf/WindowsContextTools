@@ -49,8 +49,8 @@ public class FindDuplicateFilesCommand(
 
         await writer.FlushAsync();
 
-        // Datei im Explorer zeigen
-        resultOutputService.ShowFileInExplorer(writer.FilePath);
+        // Datei im Editor öffnen
+        resultOutputService.OpenFileInEditor(writer.FilePath);
 
         return CommandResult.Success();
     }
@@ -59,6 +59,7 @@ public class FindDuplicateFilesCommand(
     {
         var duplicateFileGroups = duplicateScanResult.FileGroups;
         var duplicateFolderGroups = duplicateScanResult.FolderGroups;
+        var skippedFilesCount = duplicateScanResult.SkippedFiles.Count;
         var report = new List<string>
         {
             "Duplicate file report",
@@ -68,6 +69,7 @@ public class FindDuplicateFilesCommand(
             $"Duplicate folder groups: {duplicateFolderGroups.Count}",
             $"Potential file reclaimable size: {duplicateFileGroups.Sum(group => group.PotentialReclaimableSize)} bytes",
             $"Potential folder reclaimable size: {duplicateFolderGroups.Sum(group => group.PotentialReclaimableSize)} bytes",
+            $"Skipped files (access errors): {skippedFilesCount}",
             string.Empty
         };
 
@@ -126,6 +128,18 @@ public class FindDuplicateFilesCommand(
             }
 
             report.Add(string.Empty);
+        }
+
+        if (duplicateScanResult.SkippedFiles.Count > 0)
+        {
+            report.Add(string.Empty);
+            report.Add("Skipped files (could not be read)");
+            report.Add(string.Empty);
+
+            foreach (var skipped in duplicateScanResult.SkippedFiles)
+            {
+                report.Add($"  {skipped.FilePath} - {skipped.Reason}");
+            }
         }
 
         return report;

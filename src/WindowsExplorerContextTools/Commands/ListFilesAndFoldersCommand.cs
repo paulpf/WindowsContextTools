@@ -1,4 +1,3 @@
-using System.IO;
 using WindowsExplorerContextTools.Services;
 
 namespace WindowsExplorerContextTools.Commands;
@@ -30,7 +29,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 			{
 				var filesTask = Task.Run(() =>
 				{
-					foreach (var file in fileSystemService.GetFiles(selectedPath, "*.*", SearchOption.AllDirectories, cancellationToken))
+					foreach (var file in fileSystemService.GetFilesSafe(selectedPath, cancellationToken))
 					{
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						files.Add(file);
@@ -41,7 +40,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 
 				var foldersTask = Task.Run(() =>
 				{
-					foreach (var folder in fileSystemService.GetDirectories(selectedPath, "*", SearchOption.AllDirectories, cancellationToken))
+					foreach (var folder in fileSystemService.GetDirectoriesSafe(selectedPath, cancellationToken))
 					{
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						folders.Add(folder);
@@ -57,7 +56,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 			{
 				await Task.Run(() =>
 				{
-					foreach (var file in fileSystemService.GetFiles(selectedPath, "*.*", SearchOption.AllDirectories, cancellationToken))
+					foreach (var file in fileSystemService.GetFilesSafe(selectedPath, cancellationToken))
 					{
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						files.Add(file);
@@ -65,7 +64,7 @@ public class ListFilesAndFoldersCommand(IFileSystemService fileSystemService, IR
 						context.Progress?.Report(new ProgressInfo(++processedCount, OutputFilePath: writer.FilePath));
 					}
 
-					foreach (var folder in fileSystemService.GetDirectories(selectedPath, "*", SearchOption.AllDirectories, cancellationToken))
+					foreach (var folder in fileSystemService.GetDirectoriesSafe(selectedPath, cancellationToken))
 					{
 						context.PauseToken.WaitIfPaused(cancellationToken);
 						folders.Add(folder);

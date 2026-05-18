@@ -22,6 +22,12 @@ public class FakeResultOutputService : IResultOutputService
         ShowInEditorCallCount++; // Track for backward compatibility with tests
     }
 
+    public void OpenFileInEditor(string filePath)
+    {
+        LastExplorerFilePath = filePath;
+        ShowInEditorCallCount++;
+    }
+
     public IStreamingResultWriter CreateStreamingWriter(CancellationToken cancellationToken)
     {
         return new FakeStreamingResultWriter(this);

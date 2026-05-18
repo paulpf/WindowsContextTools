@@ -32,7 +32,7 @@ public class FindSmallestSolutionCommand(IFileSystemService fileSystemService, I
 
 		if (smallestSolution != null)
 		{
-			resultOutputService.ShowFileInExplorer(smallestSolution);
+			resultOutputService.OpenFileInEditor(smallestSolution);
 			return CommandResult.Success();
 		}
 

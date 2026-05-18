@@ -1,4 +1,3 @@
-using System.IO;
 using WindowsExplorerContextTools.Services;
 
 namespace WindowsExplorerContextTools.Commands;
@@ -27,7 +26,7 @@ public class ListFilesCommand(IFileSystemService fileSystemService, IResultOutpu
 		{
 			await Task.Run(() =>
 			{
-				foreach (var file in fileSystemService.GetFiles(selectedPath, "*.*", SearchOption.AllDirectories, cancellationToken))
+				foreach (var file in fileSystemService.GetFilesSafe(selectedPath, cancellationToken))
 				{
 					context.PauseToken.WaitIfPaused(cancellationToken);
 					files.Add(file);
@@ -46,8 +45,8 @@ public class ListFilesCommand(IFileSystemService fileSystemService, IResultOutpu
 			return CommandResult.Canceled(files);
 		}
 
-		// Datei im Explorer zeigen
-		resultOutputService.ShowFileInExplorer(writer.FilePath);
+		// Datei im Editor �ffnen
+		resultOutputService.OpenFileInEditor(writer.FilePath);
 
 		return CommandResult.Success();
 	}

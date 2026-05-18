@@ -4,6 +4,7 @@ public interface IResultOutputService
 {
     Task ShowInEditorAsync(IEnumerable<string> lines, CancellationToken cancellationToken);
     void ShowFileInExplorer(string filePath);
+    void OpenFileInEditor(string filePath);
     IStreamingResultWriter CreateStreamingWriter(CancellationToken cancellationToken);
 }
 

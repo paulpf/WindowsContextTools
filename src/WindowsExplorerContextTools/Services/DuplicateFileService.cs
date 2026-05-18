@@ -16,6 +16,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
         {
             var processedCount = 0;
             var duplicateCount = 0;
+            var skippedFiles = new List<SkippedFileEntry>();
             var fileEntries = new List<FileEntry>();
             var filesBySize = new Dictionary<long, List<string>>();
             var validRootPaths = rootPaths
@@ -29,8 +30,9 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
                 {
                     pauseToken.WaitIfPaused(cancellationToken);
 
-                    if (!TryGetFileSize(file, out var fileSize))
+                    if (!TryGetFileSize(file, out var fileSize, out var skipReason))
                     {
+                        skippedFiles.Add(new SkippedFileEntry(file, skipReason));
                         continue;
                     }
 
@@ -57,8 +59,9 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
                 pauseToken.WaitIfPaused(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (!TryComputeHash(candidate.File, out var hash))
+                if (!TryComputeHash(candidate.File, out var hash, out var skipReason))
                 {
+                    skippedFiles.Add(new SkippedFileEntry(candidate.File, skipReason));
                     continue;
                 }
 
@@ -90,15 +93,16 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
                     group.Value.Order(StringComparer.OrdinalIgnoreCase).ToList()))
                 .ToList();
 
-            var duplicateFolderGroups = FindDuplicateFolders(validRootPaths, fileEntries, progress, pauseToken, ref processedCount, ref duplicateCount, cancellationToken);
+            var duplicateFolderGroups = FindDuplicateFolders(validRootPaths, fileEntries, skippedFiles, progress, pauseToken, ref processedCount, ref duplicateCount, cancellationToken);
 
-            return new DuplicateScanResult(duplicateFileGroups, duplicateFolderGroups);
+            return new DuplicateScanResult(duplicateFileGroups, duplicateFolderGroups, skippedFiles);
         }, cancellationToken);
     }
 
     private List<DuplicateFolderGroup> FindDuplicateFolders(
         IReadOnlyList<string> rootPaths,
         IReadOnlyList<FileEntry> fileEntries,
+        List<SkippedFileEntry> skippedFiles,
         IProgress<ProgressInfo>? progress,
         PauseToken pauseToken,
         ref int processedCount,
@@ -135,7 +139,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
             pauseToken.WaitIfPaused(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!TryComputeFolderHash(candidate, out var hash))
+            if (!TryComputeFolderHash(candidate, out var hash, skippedFiles))
             {
                 continue;
             }
@@ -208,7 +212,7 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
         return new FolderCandidate(folder, string.Join("|", entries), totalSize, folderFileEntries);
     }
 
-    private bool TryComputeFolderHash(FolderCandidate candidate, out string hash)
+    private bool TryComputeFolderHash(FolderCandidate candidate, out string hash, List<SkippedFileEntry> skippedFiles)
     {
         try
         {
@@ -220,12 +224,27 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
                 AddToHash(sha256, file.RelativePath);
                 AddToHash(sha256, file.Size.ToString());
 
-                using var stream = fileSystemService.OpenRead(file.FilePath);
-                var buffer = new byte[81920];
-                int bytesRead;
-                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                try
                 {
-                    sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
+                    using var stream = fileSystemService.OpenRead(file.FilePath);
+                    var buffer = new byte[81920];
+                    int bytesRead;
+                    while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    skippedFiles.Add(new SkippedFileEntry(file.FilePath, $"Access denied: {ex.Message}"));
+                    hash = string.Empty;
+                    return false;
+                }
+                catch (IOException ex)
+                {
+                    skippedFiles.Add(new SkippedFileEntry(file.FilePath, $"IO error: {ex.Message}"));
+                    hash = string.Empty;
+                    return false;
                 }
             }
 
@@ -233,13 +252,15 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
             hash = Convert.ToHexString(sha256.Hash ?? []);
             return true;
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
+            skippedFiles.Add(new SkippedFileEntry(candidate.FolderPath, $"Access denied: {ex.Message}"));
             hash = string.Empty;
             return false;
         }
-        catch (IOException)
+        catch (IOException ex)
         {
+            skippedFiles.Add(new SkippedFileEntry(candidate.FolderPath, $"IO error: {ex.Message}"));
             hash = string.Empty;
             return false;
         }
@@ -262,41 +283,47 @@ public class DuplicateFileService(IFileSystemService fileSystemService) : IDupli
         return candidatePath.StartsWith(normalizedParent, StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool TryGetFileSize(string file, out long fileSize)
+    private bool TryGetFileSize(string file, out long fileSize, out string reason)
     {
         try
         {
             fileSize = fileSystemService.GetFileSize(file);
+            reason = string.Empty;
             return true;
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
             fileSize = 0;
+            reason = $"Access denied: {ex.Message}";
             return false;
         }
-        catch (IOException)
+        catch (IOException ex)
         {
             fileSize = 0;
+            reason = $"IO error: {ex.Message}";
             return false;
         }
     }
 
-    private bool TryComputeHash(string file, out string hash)
+    private bool TryComputeHash(string file, out string hash, out string reason)
     {
         try
         {
             using var stream = fileSystemService.OpenRead(file);
             hash = Convert.ToHexString(SHA256.HashData(stream));
+            reason = string.Empty;
             return true;
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
             hash = string.Empty;
+            reason = $"Access denied: {ex.Message}";
             return false;
         }
-        catch (IOException)
+        catch (IOException ex)
         {
             hash = string.Empty;
+            reason = $"IO error: {ex.Message}";
             return false;
         }
     }

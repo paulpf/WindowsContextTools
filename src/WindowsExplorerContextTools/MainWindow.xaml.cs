@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Diagnostics;
+using System.Security.Principal;
 using System.Windows;
 using WindowsExplorerContextTools.Commands;
 using WindowsExplorerContextTools.Services;
@@ -71,12 +72,62 @@ namespace WindowsExplorerContextTools
 			}
 		}
 
+		private static bool IsRunningAsAdministrator()
+		{
+			using var identity = WindowsIdentity.GetCurrent();
+			var principal = new WindowsPrincipal(identity);
+			return principal.IsInRole(WindowsBuiltInRole.Administrator);
+		}
+
+		private bool OfferAdminRestartIfNeeded()
+		{
+			if (IsRunningAsAdministrator())
+			{
+				return false;
+			}
+
+			var result = MessageBox.Show(
+				this,
+				"Fuer vollen Zugriff auf alle Verzeichnisse sind Admin-Rechte erforderlich.\n\nAls Administrator neu starten?",
+				"Eingeschraenkter Zugriff",
+				MessageBoxButton.YesNo,
+				MessageBoxImage.Question);
+
+			if (result != MessageBoxResult.Yes)
+			{
+				return false;
+			}
+
+			try
+			{
+				var startInfo = new ProcessStartInfo
+				{
+					FileName = Environment.ProcessPath!,
+					Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(a => $"\"{a}\"")),
+					Verb = "runas",
+					UseShellExecute = true
+				};
+				Process.Start(startInfo);
+				Application.Current.Shutdown();
+				return true;
+			}
+			catch (System.ComponentModel.Win32Exception)
+			{
+				return false;
+			}
+		}
+
 		private async Task ExecuteCommandAsync()
 		{
 			try
 			{
 				var command = GetSelectedCommand();
 				if (command == null)
+				{
+					return;
+				}
+
+				if (OfferAdminRestartIfNeeded())
 				{
 					return;
 				}

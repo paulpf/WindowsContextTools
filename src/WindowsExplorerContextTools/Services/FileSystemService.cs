@@ -106,7 +106,9 @@ public class FileSystemService : IFileSystemService
 
     public async Task<List<string>> FindSolutionFilesAsync(string path, CancellationToken cancellationToken)
     {
-        return await Task.Run(() => Directory.EnumerateFiles(path, "*.sln", SearchOption.AllDirectories).ToList(), cancellationToken);
+        return await Task.Run(() => GetFilesSafe(path, cancellationToken)
+            .Where(f => f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+            .ToList(), cancellationToken);
     }
 
     public async Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken)

@@ -22,7 +22,6 @@ public class ListFoldersCommand(
 			return CommandResult.StayOpen("The selected path is not a folder.");
 		}
 
-		var searchOption = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
 		var folders = new List<string>();
 		await using var writer = resultOutputService.CreateStreamingWriter(cancellationToken);
 
@@ -33,7 +32,11 @@ public class ListFoldersCommand(
 		{
 			await Task.Run(() =>
 			{
-				foreach (var folder in fileSystemService.GetDirectories(selectedPath, "*", searchOption, cancellationToken))
+				var source = includeSubfolders
+					? fileSystemService.GetDirectoriesSafe(selectedPath, cancellationToken)
+					: fileSystemService.GetDirectories(selectedPath, "*", SearchOption.TopDirectoryOnly, cancellationToken);
+
+				foreach (var folder in source)
 				{
 					context.PauseToken.WaitIfPaused(cancellationToken);
 					folders.Add(folder);
@@ -52,8 +55,8 @@ public class ListFoldersCommand(
 			return CommandResult.Canceled(folders);
 		}
 
-		// Datei im Explorer zeigen
-		resultOutputService.ShowFileInExplorer(writer.FilePath);
+		// Datei im Editor �ffnen
+		resultOutputService.OpenFileInEditor(writer.FilePath);
 
 		return CommandResult.Success();
 	}
